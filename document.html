@@ -1,51 +1,49 @@
 <html>
     <head>
         <title>getToPost</title>
-        <script>
-            function getToPost()
-            {
-              $.ajax({
-  url: 'http://192.168.0.223:8080/api/v1/scan',
-  crossDomain: true,
-  method: 'post',
-  headers: {
-    'accept': 'application/json'
-  },
-  contentType: 'application/json',
-  // data: '{\n  "params": {\n    "deviceId": "pixma:04A91913_4E2F69",\n    "top": 0,\n    "left": 0,\n    "width": 215,\n    "height": 297,\n    "pageWidth": 215,\n    "pageHeight": 297,\n    "resolution": 200,\n    "mode": "Color",\n    "source": "Flatbed",\n    "adfMode": "Simplex",\n    "brightness": 0,\n    "contrast": 0,\n    "dynamicLineart": false,\n    "ald": "yes"\n  },\n  "filters": [\n    "filter.auto-level",\n    "filter.threshold"\n  ],\n  "pipeline": "JPG | @:pipeline.high-quality",\n  "batch": "none",\n  "index": 0\n}',
-  data: JSON.stringify({
-    'params': {
-      'deviceId': 'pixma:04A91913_4E2F69',
-      'top': 0,
-      'left': 0,
-      'width': 215,
-      'height': 297,
-      'pageWidth': 215,
-      'pageHeight': 297,
-      'resolution': 200,
-      'mode': 'Color',
-      'source': 'Flatbed',
-      'adfMode': 'Simplex',
-      'brightness': 0,
-      'contrast': 0,
-      'dynamicLineart': false,
-      'ald': 'yes'
-    },
-    'filters': [
-      'filter.auto-level',
-      'filter.threshold'
-    ],
-    'pipeline': 'JPG | @:pipeline.high-quality',
-    'batch': 'none',
-    'index': 0
-  })
-}).done(function(response) {
-  console.log(response);
-});
-            }
-        </script>
     </head>
-    <body onload="getToPost()">
-        <form method="POST"></form>
-    </body>
-</html>
+<body onload="myFunction()"> 
+  <script>
+    function myFunction() {
+      // const data = '{\n  "params": {\n    "deviceId": "pixma:04A91913_4E2F69",\n    "top": 0,\n    "left": 0,\n    "width": 215,\n    "height": 297,\n    "pageWidth": 215,\n    "pageHeight": 297,\n    "resolution": 200,\n    "mode": "Color",\n    "source": "Flatbed",\n    "adfMode": "Simplex",\n    "brightness": 0,\n    "contrast": 0,\n    "dynamicLineart": false,\n    "ald": "yes"\n  },\n  "filters": [\n    "filter.auto-level",\n    "filter.threshold"\n  ],\n  "pipeline": "JPG | @:pipeline.high-quality",\n  "batch": "none",\n  "index": 0\n}';
+const data = JSON.stringify({
+  'params': {
+    'deviceId': 'pixma:04A91913_4E2F69',
+    'top': 0,
+    'left': 0,
+    'width': 215,
+    'height': 297,
+    'pageWidth': 215,
+    'pageHeight': 297,
+    'resolution': 200,
+    'mode': 'Color',
+    'source': 'Flatbed',
+    'adfMode': 'Simplex',
+    'brightness': 0,
+    'contrast': 0,
+    'dynamicLineart': false,
+    'ald': 'yes'
+  },
+  'filters': [
+    'filter.auto-level',
+    'filter.threshold'
+  ],
+  'pipeline': 'JPG | @:pipeline.high-quality',
+  'batch': 'none',
+  'index': 0
+});
+
+let xhr = new XMLHttpRequest();
+xhr.withCredentials = true;
+xhr.open('POST', 'http://192.168.0.223:8080/api/v1/scan');
+xhr.setRequestHeader('accept', 'application/json');
+xhr.setRequestHeader('Content-Type', 'application/json');
+
+xhr.onload = function() {
+  console.log(xhr.response);
+};
+
+xhr.send(data);
+    }
+  </script>
+</body></html>
