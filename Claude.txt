@@ -1,0 +1,56 @@
+# docker-compose.yml
+version: "3"
+services:
+  scanservjs:
+    image: sbs20/scanservjs:latest
+    container_name: scanservjs-container
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./scans:/var/lib/scanservjs/output
+      - ./config:/etc/scanservjs
+      - /var/run/dbus:/var/run/dbus
+    devices:
+      # You'll need to replace 001/003 with your actual USB bus/device numbers
+      # Find these using: sudo sane-find-scanner -q
+      - /dev/bus/usb/001/003:/dev/bus/usb/001/003
+    # Add device group rule for USB access
+    device_cgroup_rules:
+      - 'c 189:* rmw'
+    restart: unless-stopped
+    
+# Makefile
+# Define variables
+IMAGE_NAME = sbs20/scanservjs:latest
+CUSTOM_IMAGE_NAME = my-scanservjs:latest
+
+.PHONY: all build clean run
+
+# Build the custom image with rclone
+build:
+	@echo "Building custom image with rclone..."
+	@docker build -t $(CUSTOM_IMAGE_NAME) -f- . <<EOF
+	FROM $(IMAGE_NAME)
+	
+	# Install rclone
+	RUN apt-get update && \
+	    apt-get install -y curl unzip && \
+	    curl https://rclone.org/install.sh | bash && \
+	    apt-get clean && \
+	    rm -rf /var/lib/apt/lists/*
+	
+	# Create rclone config directory
+	RUN mkdir -p /root/.config/rclone
+	EOF
+
+# Run the container with scanner access
+run:
+	docker-compose up -d
+
+# Stop and remove containers
+clean:
+	docker-compose down
+	docker rmi $(CUSTOM_IMAGE_NAME)
+
+# Default target
+all: build run
