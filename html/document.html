@@ -3,48 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scanner Control (Debug)</title>
+    <title>Scanner Control</title>
     <style>
-        /* ... previous styles ... */
-        #debug {
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            background-color: #f5f5f5;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        h1 { color: #333; }
+        #status {
             margin-top: 20px;
             padding: 10px;
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
             border-radius: 4px;
-            white-space: pre-wrap;
-            font-family: monospace;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
         }
     </style>
 </head>
 <body>
-    <h1>Scanner Control (Debug)</h1>
+    <h1>Scanner Control</h1>
     <div class="container">
         <h2>Scanner Information</h2>
-        <p>Connected to PIXMA scanner at 192.168.0.223:8080</p>
+        <p>Connected to PIXMA scanner through local proxy</p>
         <button onclick="initiateScanning()">Start Scan</button>
         <div id="status"></div>
-        <div id="debug"></div>
     </div>
 
     <script>
-        const SCANNER_API = 'http://192.168.0.223:8080/api/v1/scan';
-        const debugDiv = document.getElementById('debug');
+        const SCANNER_API = '/scanner/api/v1/scan';  // Using proxied endpoint
         
-        function logDebug(message, data) {
-            const timestamp = new Date().toISOString();
-            debugDiv.textContent += `\n[${timestamp}] ${message}`;
-            if (data) {
-                debugDiv.textContent += '\n' + JSON.stringify(data, null, 2);
-            }
+        function updateStatus(message, isError = false) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = isError ? 'error' : 'success';
         }
 
         async function initiateScanning() {
             try {
                 updateStatus('Initiating scan...');
-                logDebug('Starting scan request');
-                
-                const config = {
+                const response = await fetch(SCANNER_API, {
                     method: 'POST',
                     headers: {
                         'accept': 'application/json',
@@ -76,36 +87,15 @@
                         batch: 'none',
                         index: 0
                     })
-                };
-
-                logDebug('Request configuration:', config);
-                
-                const response = await fetch(SCANNER_API, config);
-                logDebug('Response status:', {
-                    status: response.status,
-                    statusText: response.statusText,
-                    headers: Object.fromEntries(response.headers.entries())
                 });
                 
                 const data = await response.json();
-                logDebug('Response data:', data);
+                console.log('Scan response:', data);
                 updateStatus('Scan completed successfully');
             } catch (error) {
                 console.error('Scanning error:', error);
-                logDebug('Error details:', {
-                    name: error.name,
-                    message: error.message,
-                    stack: error.stack
-                });
                 updateStatus('Error during scanning: ' + error.message, true);
             }
-        }
-
-        function updateStatus(message, isError = false) {
-            const statusDiv = document.getElementById('status');
-            statusDiv.textContent = message;
-            statusDiv.className = isError ? 'error' : 'success';
-            logDebug(message);
         }
     </script>
 </body>
