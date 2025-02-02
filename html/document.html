@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Docker Web Server</title>
+    <title>Scanner Control</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -21,56 +21,86 @@
         h1 {
             color: #333;
         }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
     </style>
 </head>
-<body onload="myFunction()"> 
-        <h1>Welcome to Docker Web Server</h1>
+<body>
+    <h1>Scanner Control</h1>
     <div class="container">
-        <h2>Server Information</h2>
-        <p>This page is being served from an Nginx container running in Docker.</p>
-        <p>You can modify this content and use Git to manage your changes.</p>
+        <h2>Scanner Information</h2>
+        <p>Connected to PIXMA scanner at 192.168.0.223:8080</p>
+        <button onclick="initiateScanning()">Start Scan</button>
+        <div id="status"></div>
     </div>
-  <script>
-    function myFunction() {
-        fetch('http://192.168.0.223:8080/api/v1/scan', {
-  method: 'POST',
-  headers: {
-    'accept': 'application/json',
-    'Content-Type': 'application/json'
-  },
-  // body: '{\n  "params": {\n    "deviceId": "pixma:04A91913_4E2F69",\n    "top": 0,\n    "left": 0,\n    "width": 215,\n    "height": 297,\n    "pageWidth": 215,\n    "pageHeight": 297,\n    "resolution": 200,\n    "mode": "Color",\n    "source": "Flatbed",\n    "adfMode": "Simplex",\n    "brightness": 0,\n    "contrast": 0,\n    "dynamicLineart": false,\n    "ald": "yes"\n  },\n  "filters": [\n    "filter.auto-level",\n    "filter.threshold"\n  ],\n  "pipeline": "JPG | @:pipeline.high-quality",\n  "batch": "none",\n  "index": 0\n}',
-  body: JSON.stringify({
-    'params': {
-      'deviceId': 'pixma:04A91913_4E2F69',
-      'top': 0,
-      'left': 0,
-      'width': 215,
-      'height': 297,
-      'pageWidth': 215,
-      'pageHeight': 297,
-      'resolution': 200,
-      'mode': 'Color',
-      'source': 'Flatbed',
-      'adfMode': 'Simplex',
-      'brightness': 0,
-      'contrast': 0,
-      'dynamicLineart': false,
-      'ald': 'yes'
-    },
-    'filters': [
-      'filter.auto-level',
-      'filter.threshold'
-    ],
-    'pipeline': 'JPG | @:pipeline.high-quality',
-    'batch': 'none',
-    'index': 0
-  })
-})
-  .then((response) => response.json())
-  .then((data) => console.log("Success:", data))
-  .catch((error) => console.error("Error:", error));
-    }
-myFunction();
-  </script>
+
+    <script>
+        const SCANNER_API = 'http://192.168.0.223:8080/api/v1/scan';
+        
+        const scannerConfig = {
+            params: {
+                deviceId: 'pixma:04A91913_4E2F69',
+                top: 0,
+                left: 0,
+                width: 215,
+                height: 297,
+                pageWidth: 215,
+                pageHeight: 297,
+                resolution: 200,
+                mode: 'Color',
+                source: 'Flatbed',
+                adfMode: 'Simplex',
+                brightness: 0,
+                contrast: 0,
+                dynamicLineart: false,
+                ald: 'yes'
+            },
+            filters: [
+                'filter.auto-level',
+                'filter.threshold'
+            ],
+            pipeline: 'JPG | @:pipeline.high-quality',
+            batch: 'none',
+            index: 0
+        };
+
+        function updateStatus(message, isError = false) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = isError ? 'error' : 'success';
+        }
+
+        async function initiateScanning() {
+            try {
+                updateStatus('Initiating scan...');
+                const response = await fetch(SCANNER_API, {
+                    method: 'POST',
+                    headers: {
+                        'accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(scannerConfig)
+                });
+                
+                const data = await response.json();
+                console.log('Scan response:', data);
+                updateStatus('Scan completed successfully');
+            } catch (error) {
+                console.error('Scanning error:', error);
+                updateStatus('Error during scanning: ' + error.message, true);
+            }
+        }
+    </script>
 </body>
 </html>
