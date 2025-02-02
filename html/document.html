@@ -3,103 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scanner Control</title>
+    <title>Scanner Control (Debug)</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        .container {
-            background-color: #f5f5f5;
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-        h1 {
-            color: #333;
-        }
-        #status {
+        /* ... previous styles ... */
+        #debug {
             margin-top: 20px;
             padding: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
             border-radius: 4px;
-        }
-        .success {
-            background-color: #dff0d8;
-            color: #3c763d;
-        }
-        .error {
-            background-color: #f2dede;
-            color: #a94442;
+            white-space: pre-wrap;
+            font-family: monospace;
         }
     </style>
 </head>
 <body>
-    <h1>Scanner Control</h1>
+    <h1>Scanner Control (Debug)</h1>
     <div class="container">
         <h2>Scanner Information</h2>
         <p>Connected to PIXMA scanner at 192.168.0.223:8080</p>
         <button onclick="initiateScanning()">Start Scan</button>
         <div id="status"></div>
+        <div id="debug"></div>
     </div>
 
     <script>
         const SCANNER_API = 'http://192.168.0.223:8080/api/v1/scan';
+        const debugDiv = document.getElementById('debug');
         
-        const scannerConfig = {
-            params: {
-                deviceId: 'pixma:04A91913_4E2F69',
-                top: 0,
-                left: 0,
-                width: 215,
-                height: 297,
-                pageWidth: 215,
-                pageHeight: 297,
-                resolution: 200,
-                mode: 'Color',
-                source: 'Flatbed',
-                adfMode: 'Simplex',
-                brightness: 0,
-                contrast: 0,
-                dynamicLineart: false,
-                ald: 'yes'
-            },
-            filters: [
-                'filter.auto-level',
-                'filter.threshold'
-            ],
-            pipeline: 'JPG | @:pipeline.high-quality',
-            batch: 'none',
-            index: 0
-        };
-
-        function updateStatus(message, isError = false) {
-            const statusDiv = document.getElementById('status');
-            statusDiv.textContent = message;
-            statusDiv.className = isError ? 'error' : 'success';
+        function logDebug(message, data) {
+            const timestamp = new Date().toISOString();
+            debugDiv.textContent += `\n[${timestamp}] ${message}`;
+            if (data) {
+                debugDiv.textContent += '\n' + JSON.stringify(data, null, 2);
+            }
         }
 
         async function initiateScanning() {
             try {
                 updateStatus('Initiating scan...');
-                const response = await fetch(SCANNER_API, {
+                logDebug('Starting scan request');
+                
+                const config = {
                     method: 'POST',
                     headers: {
                         'accept': 'application/json',
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(scannerConfig)
+                    body: JSON.stringify({
+                        params: {
+                            deviceId: 'pixma:04A91913_4E2F69',
+                            top: 0,
+                            left: 0,
+                            width: 215,
+                            height: 297,
+                            pageWidth: 215,
+                            pageHeight: 297,
+                            resolution: 200,
+                            mode: 'Color',
+                            source: 'Flatbed',
+                            adfMode: 'Simplex',
+                            brightness: 0,
+                            contrast: 0,
+                            dynamicLineart: false,
+                            ald: 'yes'
+                        },
+                        filters: [
+                            'filter.auto-level',
+                            'filter.threshold'
+                        ],
+                        pipeline: 'JPG | @:pipeline.high-quality',
+                        batch: 'none',
+                        index: 0
+                    })
+                };
+
+                logDebug('Request configuration:', config);
+                
+                const response = await fetch(SCANNER_API, config);
+                logDebug('Response status:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: Object.fromEntries(response.headers.entries())
                 });
                 
                 const data = await response.json();
-                console.log('Scan response:', data);
+                logDebug('Response data:', data);
                 updateStatus('Scan completed successfully');
             } catch (error) {
                 console.error('Scanning error:', error);
+                logDebug('Error details:', {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack
+                });
                 updateStatus('Error during scanning: ' + error.message, true);
             }
+        }
+
+        function updateStatus(message, isError = false) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = isError ? 'error' : 'success';
+            logDebug(message);
         }
     </script>
 </body>
