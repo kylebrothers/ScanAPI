@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docker Web Server</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            background-color: #f5f5f5;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+    </style>
+</head>
+<body onload="myFunction()"> 
+        <h1>Welcome to Docker Web Server</h1>
+    <div class="container">
+        <h2>Server Information</h2>
+        <p>This page is being served from an Nginx container running in Docker.</p>
+        <p>You can modify this content and use Git to manage your changes.</p>
+    </div>
+  <script>
+    function myFunction() {
+        fetch('http://192.168.0.223:8080/api/v1/scan', {
+  method: 'POST',
+  headers: {
+    'accept': 'application/json',
+    'Content-Type': 'application/json'
+  },
+  // body: '{\n  "params": {\n    "deviceId": "pixma:04A91913_4E2F69",\n    "top": 0,\n    "left": 0,\n    "width": 215,\n    "height": 297,\n    "pageWidth": 215,\n    "pageHeight": 297,\n    "resolution": 200,\n    "mode": "Color",\n    "source": "Flatbed",\n    "adfMode": "Simplex",\n    "brightness": 0,\n    "contrast": 0,\n    "dynamicLineart": false,\n    "ald": "yes"\n  },\n  "filters": [\n    "filter.auto-level",\n    "filter.threshold"\n  ],\n  "pipeline": "JPG | @:pipeline.high-quality",\n  "batch": "none",\n  "index": 0\n}',
+  body: JSON.stringify({
+    'params': {
+      'deviceId': 'pixma:04A91913_4E2F69',
+      'top': 0,
+      'left': 0,
+      'width': 215,
+      'height': 297,
+      'pageWidth': 215,
+      'pageHeight': 297,
+      'resolution': 200,
+      'mode': 'Color',
+      'source': 'Flatbed',
+      'adfMode': 'Simplex',
+      'brightness': 0,
+      'contrast': 0,
+      'dynamicLineart': false,
+      'ald': 'yes'
+    },
+    'filters': [
+      'filter.auto-level',
+      'filter.threshold'
+    ],
+    'pipeline': 'JPG | @:pipeline.high-quality',
+    'batch': 'none',
+    'index': 0
+  })
+})
+  .then((response) => response.json())
+  .then((data) => console.log("Success:", data))
+  .catch((error) => console.error("Error:", error));
+    }
+myFunction();
+  </script>
+</body>
+</html>
