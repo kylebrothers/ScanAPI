@@ -32,6 +32,17 @@
             background-color: #f2dede;
             color: #a94442;
         }
+        #rawResponse {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 200px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body>
@@ -41,15 +52,21 @@
         <p>Connected to PIXMA scanner through local proxy</p>
         <button onclick="initiateScanning()">Start Scan</button>
         <div id="status"></div>
+        <div id="rawResponse"></div>
     </div>
 
     <script>
-        const SCANNER_API = '/scanner/api/v1/scan';  // Using proxied endpoint
+        const SCANNER_API = '/scanner/api/v1/scan';
         
         function updateStatus(message, isError = false) {
             const statusDiv = document.getElementById('status');
             statusDiv.textContent = message;
             statusDiv.className = isError ? 'error' : 'success';
+        }
+
+        function updateRawResponse(text) {
+            const responseDiv = document.getElementById('rawResponse');
+            responseDiv.textContent = text;
         }
 
         async function initiateScanning() {
@@ -88,10 +105,20 @@
                         index: 0
                     })
                 });
+
+                // Get the raw text response first
+                const rawText = await response.text();
+                updateRawResponse('Raw Response:\n' + rawText);
                 
-                const data = await response.json();
-                console.log('Scan response:', data);
-                updateStatus('Scan completed successfully');
+                // Try to parse as JSON
+                let data;
+                try {
+                    data = JSON.parse(rawText);
+                    console.log('Scan response:', data);
+                    updateStatus('Scan completed successfully');
+                } catch (parseError) {
+                    throw new Error(`Invalid JSON response: ${rawText.substring(0, 100)}...`);
+                }
             } catch (error) {
                 console.error('Scanning error:', error);
                 updateStatus('Error during scanning: ' + error.message, true);
