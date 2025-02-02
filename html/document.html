@@ -1,6 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
-<!-- ... (previous head section remains the same) ... -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner Control</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            background-color: #f5f5f5;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        h1 { color: #333; }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+        #rawResponse {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
 <body>
     <h1>Scanner Control</h1>
     <div class="container">
@@ -12,7 +56,8 @@
     </div>
 
     <script>
-        const SCANNER_API = '/scanner/api/v1/scan';
+        // Use port 8080 in the API endpoint
+        const SCANNER_API = 'http://192.168.0.223:8080/api/v1/scan';
         
         function updateStatus(message, isError = false) {
             const statusDiv = document.getElementById('status');
@@ -27,11 +72,10 @@
 
         async function initiateScanning() {
             try {
-                const url = new URL(SCANNER_API, window.location.origin);
                 updateStatus('Initiating scan...');
-                updateRawResponse('Sending request to: ' + url.toString() + '\n');
+                updateRawResponse('Sending request to: ' + SCANNER_API + '\n');
 
-                const response = await fetch(url, {
+                const response = await fetch(SCANNER_API, {
                     method: 'POST',
                     headers: {
                         'accept': 'application/json',
@@ -66,7 +110,7 @@
                 });
 
                 const rawText = await response.text();
-                updateRawResponse('Request URL: ' + url.toString() + '\n\nResponse Status: ' + response.status + '\n\nRaw Response:\n' + rawText);
+                updateRawResponse('Request URL: ' + SCANNER_API + '\n\nResponse Status: ' + response.status + '\n\nRaw Response:\n' + rawText);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
