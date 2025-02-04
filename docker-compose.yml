@@ -2,10 +2,23 @@ version: '3.8'
 
 services:
   webserver:
-    image: nginx:alpine
+    build: .
+    container_name: nginx-curl-server
     ports:
-      - "80:80"
+      - "${HOST_PORT:-80}:80"  # Dynamic host port with default value 80
     volumes:
-      - ./html:/usr/share/nginx/html
+      - nginx_html:/usr/share/nginx/html
+      - nginx_config:/usr/local/openresty/nginx/conf/custom
     restart: unless-stopped
-    container_name: simple-webserver
+
+volumes:
+  nginx_html:
+    driver_opts:
+      type: nfs
+      device: ":/Docker/nginx-curl/html"
+      o: nfsvers=4,addr=192.168.0.134,nolock,soft,rw
+  nginx_config:
+    driver_opts:
+      type: nfs
+      device: ":/Docker/nginx-curl/config"
+      o: nfsvers=4,addr=192.168.0.134,nolock,soft,rw
