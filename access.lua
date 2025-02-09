@@ -46,27 +46,85 @@ local function execute_curl(curl_command)
     return result, success
 end
 
--- Function to inject debug info into HTML
-local function inject_debug_info(debug_data)
-    -- Capture the original response body
-    local response = ngx.arg[1]
-    
-    -- Create debug HTML
-    local debug_html = [[
-        <div style="position: fixed; bottom: 0; left: 0; right: 0; 
-                    background-color: rgba(0,0,0,0.8); color: #00ff00; 
-                    font-family: monospace; padding: 20px; 
-                    max-height: 50%; overflow-y: auto; z-index: 10000;">
-            <h3>Debug Information:</h3>
-            <pre>]] .. table.concat(debug_data, "\n") .. [[</pre>
-        </div>
+-- Function to create auto-close HTML page
+local function create_auto_close_page(command_config)
+    local html = [[
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Scanning...</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            text-align: center;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Initiating Scan...</h2>
+        <div class="spinner"></div>
+        <p>The page will close automatically when complete.</p>
+    </div>
+    <script>
+        // Function to execute the curl command via fetch
+        async function executeScan() {
+            try {
+                const response = await fetch(']] .. command_config.url .. [[', {
+                    method: ']] .. (command_config.method or "GET") .. [[',
+                    headers: ]] .. cjson.encode(command_config.headers or {}) .. [[,
+                    body: ]] .. (command_config.data and cjson.encode(command_config.data) or "null") .. [[
+                });
+                
+                const data = await response.json();
+                console.log('Scan response:', data);
+                
+                // Wait a moment to ensure the scan has started
+                setTimeout(() => {
+                    window.close();
+                }, 2000);
+            } catch (error) {
+                console.error('Scan error:', error);
+                document.querySelector('.container').innerHTML += `
+                    <p style="color: red">Error: ${error.message}</p>
+                    <button onclick="window.close()">Close Window</button>
+                `;
+            }
+        }
+
+        // Execute scan when page loads
+        window.onload = executeScan;
+    </script>
+</body>
+</html>
     ]]
     
-    -- Insert debug info before closing body tag
-    if response then
-        response = response:gsub("</body>", debug_html .. "</body>")
-        ngx.arg[1] = response
-    end
+    return html
 end
 
 -- Main request handling
@@ -77,46 +135,12 @@ if string.match(ngx.var.uri, "%.html$") then
     if config and config.commands[ngx.var.uri] then
         local command_config = config.commands[ngx.var.uri]
         add_debug("Found configuration for URI")
-        add_debug("Configuration: " .. cjson.encode(command_config))
         
-        -- Build curl command
-        local curl_parts = {"curl -s"}
-        
-        if command_config.method then
-            table.insert(curl_parts, "-X " .. command_config.method)
-        end
-        
-        if command_config.headers then
-            for header, value in pairs(command_config.headers) do
-                table.insert(curl_parts, string.format("-H '%s: %s'", header, value))
-            end
-        end
-        
-        if command_config.data then
-            table.insert(curl_parts, "-d '" .. cjson.encode(command_config.data) .. "'")
-        end
-        
-        table.insert(curl_parts, "'" .. command_config.url .. "'")
-        local curl_command = table.concat(curl_parts, " ")
-        
-        -- Execute the command
-        local result, success = execute_curl(curl_command)
-        
-        -- Register a body filter to inject debug info
-        ngx.ctx.debug_info = debug_info
+        -- Generate and serve the auto-close page
+        ngx.header.content_type = "text/html"
+        ngx.say(create_auto_close_page(command_config))
+        return ngx.exit(ngx.OK)
     else
         add_debug("No configuration found for this URI")
     end
-    
-    -- Set up the body filter
-    ngx.header.content_type = "text/html"
-    ngx.header.content_length = nil  -- Clear content length as we'll modify the body
-    
-    -- Register the body filter
-    ngx.ctx.debug_info = debug_info
-end
-
--- Body filter
-if ngx.arg[1] and ngx.ctx.debug_info then
-    inject_debug_info(ngx.ctx.debug_info)
 end
