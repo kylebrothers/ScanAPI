@@ -28,26 +28,8 @@ local function read_config_file()
     return config
 end
 
--- Function to execute curl command and capture output
-local function execute_curl(curl_command)
-    add_debug("Executing curl command: " .. curl_command)
-    
-    local handle = io.popen(curl_command)
-    local result = handle:read("*a")
-    local success, exit_type, exit_code = handle:close()
-    
-    if success then
-        add_debug("Curl command executed successfully")
-        add_debug("Response: " .. result)
-    else
-        add_debug("Curl command failed with exit code: " .. (exit_code or "unknown"))
-    end
-    
-    return result, success
-end
-
--- Function to create auto-close HTML page
-local function create_auto_close_page(command_config)
+-- Function to create scan page
+local function create_scan_page(command_config)
     local html = [[
 <!DOCTYPE html>
 <html>
@@ -69,6 +51,8 @@ local function create_auto_close_page(command_config)
             background-color: white;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 100%;
         }
         .spinner {
             border: 4px solid #f3f3f3;
@@ -83,16 +67,55 @@ local function create_auto_close_page(command_config)
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .success {
+            color: #2ecc71;
+            display: none;
+        }
+        .error {
+            color: #e74c3c;
+            display: none;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Initiating Scan...</h2>
-        <div class="spinner"></div>
-        <p>The page will close automatically when complete.</p>
+        <div id="scanning">
+            <h2>Initiating Scan...</h2>
+            <div class="spinner"></div>
+            <p>Please wait while your document is being scanned.</p>
+        </div>
+        <div id="success" class="success">
+            <h2>Scan Complete!</h2>
+            <p>Your document has been scanned successfully.</p>
+            <button onclick="window.close(); window.location.href='about:blank';">Close Window</button>
+        </div>
+        <div id="error" class="error">
+            <h2>Scan Error</h2>
+            <p id="errorMessage"></p>
+            <button onclick="window.close(); window.location.href='about:blank';">Close Window</button>
+        </div>
     </div>
     <script>
-        // Function to execute the curl command via fetch
+        // Function to show a specific section and hide others
+        function showSection(sectionId) {
+            ['scanning', 'success', 'error'].forEach(id => {
+                document.getElementById(id).style.display = id === sectionId ? 'block' : 'none';
+            });
+        }
+
+        // Function to execute the scan
         async function executeScan() {
             try {
                 const response = await fetch(']] .. command_config.url .. [[', {
@@ -104,16 +127,20 @@ local function create_auto_close_page(command_config)
                 const data = await response.json();
                 console.log('Scan response:', data);
                 
-                // Wait a moment to ensure the scan has started
+                // Show success message
+                showSection('success');
+                
+                // If the window doesn't close automatically, at least we show a nice message
                 setTimeout(() => {
-                    window.close();
+                    if (!window.closed) {
+                        document.querySelector('.success p').innerHTML += '<br><small>You can now close this window.</small>';
+                    }
                 }, 2000);
+                
             } catch (error) {
                 console.error('Scan error:', error);
-                document.querySelector('.container').innerHTML += `
-                    <p style="color: red">Error: ${error.message}</p>
-                    <button onclick="window.close()">Close Window</button>
-                `;
+                document.getElementById('errorMessage').textContent = error.message;
+                showSection('error');
             }
         }
 
@@ -136,9 +163,9 @@ if string.match(ngx.var.uri, "%.html$") then
         local command_config = config.commands[ngx.var.uri]
         add_debug("Found configuration for URI")
         
-        -- Generate and serve the auto-close page
+        -- Generate and serve the scan page
         ngx.header.content_type = "text/html"
-        ngx.say(create_auto_close_page(command_config))
+        ngx.say(create_scan_page(command_config))
         return ngx.exit(ngx.OK)
     else
         add_debug("No configuration found for this URI")
