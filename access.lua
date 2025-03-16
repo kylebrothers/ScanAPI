@@ -281,30 +281,42 @@ local function create_error_page()
     return html
 end
 
--- Main request handling
-if ngx.var.uri == "/scan-success.html" then
-    -- Serve success page
-    ngx.header.content_type = "text/html"
-    ngx.say(create_success_page())
-    return ngx.exit(ngx.OK)
-elseif ngx.var.uri == "/scan-error.html" then
-    -- Serve error page
-    ngx.header.content_type = "text/html"
-    ngx.say(create_error_page())
-    return ngx.exit(ngx.OK)
-elseif string.match(ngx.var.uri, "%.html$") then
-    add_debug("Processing request for: " .. ngx.var.uri)
-    
-    local config = read_config_file()
-    if config and config.commands[ngx.var.uri] then
-        local command_config = config.commands[ngx.var.uri]
-        add_debug("Found configuration for URI")
-        
-        -- Generate and serve the scan page
-        ngx.header.content_type = "text/html"
-        ngx.say(create_scan_page(command_config))
-        return ngx.exit(ngx.OK)
-    else
-        add_debug("No configuration found for this URI")
+-- Determine the current execution phase
+local function handle_request()
+    -- Handle content phase requests for scan result pages
+    if ngx.get_phase() == "content" then
+        if ngx.var.uri == "/scan-success.html" then
+            -- Serve success page
+            ngx.header.content_type = "text/html"
+            ngx.say(create_success_page())
+            return ngx.exit(ngx.OK)
+        elseif ngx.var.uri == "/scan-error.html" then
+            -- Serve error page
+            ngx.header.content_type = "text/html"
+            ngx.say(create_error_page())
+            return ngx.exit(ngx.OK)
+        end
+    -- Handle access phase requests
+    elseif ngx.get_phase() == "access" then
+        if string.match(ngx.var.uri, "%.html$") then
+            add_debug("Processing request for: " .. ngx.var.uri)
+            
+            local config = read_config_file()
+            if config and config.commands[ngx.var.uri] then
+                local command_config = config.commands[ngx.var.uri]
+                add_debug("Found configuration for URI")
+                
+                -- Generate and serve the scan page
+                ngx.header.content_type = "text/html"
+                ngx.say(create_scan_page(command_config))
+                return ngx.exit(ngx.OK)
+            else
+                add_debug("No configuration found for this URI")
+            end
+        end
+    -- Other phases don't need special handling for our use case
     end
 end
+
+-- Execute the request handler
+handle_request()
