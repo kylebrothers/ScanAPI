@@ -30,6 +30,20 @@ end
 
 -- Function to create scan page
 local function create_scan_page(command_config)
+    -- Extract scan details for display
+    local scan_type = "Document"
+    if string.match(ngx.var.uri, "photo") then
+        scan_type = "Photo"
+    end
+    
+    local scan_mode = "Color"
+    if string.match(ngx.var.uri, "gray") then
+        scan_mode = "Grayscale"
+    end
+    
+    local device_id = command_config.data.params.deviceId
+    local scanner_id = string.match(device_id, "_(%w+)$") or "Unknown"
+    
     local html = [[
 <!DOCTYPE html>
 <html>
@@ -37,13 +51,13 @@ local function create_scan_page(command_config)
     <title>Scanning...</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
-            background-color: #f0f0f0;
+            background-color: #f5f5f5;
         }
         .container {
             text-align: center;
@@ -67,80 +81,39 @@ local function create_scan_page(command_config)
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        .success {
-            color: #2ecc71;
-            display: none;
-        }
-        .error {
-            color: #e74c3c;
-            display: none;
-        }
-        button {
-            background-color: #3498db;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        button:hover {
-            background-color: #2980b9;
-        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div id="scanning">
-            <h2>Initiating Scan...</h2>
-            <div class="spinner"></div>
-            <p>Please wait while your document is being scanned.</p>
-        </div>
-        <div id="success" class="success">
-            <h2>Scan Complete!</h2>
-            <p>Your document has been scanned successfully.</p>
-            <button onclick="window.close(); window.location.href='about:blank';">Close Window</button>
-        </div>
-        <div id="error" class="error">
-            <h2>Scan Error</h2>
-            <p id="errorMessage"></p>
-            <button onclick="window.close(); window.location.href='about:blank';">Close Window</button>
-        </div>
+        <h2>Initiating Scan...</h2>
+        <div class="spinner"></div>
+        <p>Please wait while your ]] .. scan_type .. [[ is being scanned in ]] .. scan_mode .. [[ mode.</p>
+        <p>Scanner: ]] .. scanner_id .. [[</p>
     </div>
     <script>
-        // Function to show a specific section and hide others
-        function showSection(sectionId) {
-            ['scanning', 'success', 'error'].forEach(id => {
-                document.getElementById(id).style.display = id === sectionId ? 'block' : 'none';
-            });
-        }
-
         // Function to execute the scan
         async function executeScan() {
             try {
                 const response = await fetch(']] .. command_config.url .. [[', {
                     method: ']] .. (command_config.method or "GET") .. [[',
                     headers: ]] .. cjson.encode(command_config.headers or {}) .. [[,
-                    body: ]] .. (command_config.data and cjson.encode(command_config.data) or "null") .. [[
+                    body: JSON.stringify(]] .. (command_config.data and cjson.encode(command_config.data) or "null") .. [[)
                 });
+                
+                if (!response.ok) {
+                    throw new Error('Scan failed with status: ' + response.status);
+                }
                 
                 const data = await response.json();
                 console.log('Scan response:', data);
                 
-                // Show success message
-                showSection('success');
-                
-                // If the window doesn't close automatically, at least we show a nice message
-                setTimeout(() => {
-                    if (!window.closed) {
-                        document.querySelector('.success p').innerHTML += '<br><small>You can now close this window.</small>';
-                    }
-                }, 2000);
+                // Redirect to success page with scan info
+                window.location.href = '/scan-success.html?type=]] .. scan_type .. [[&mode=]] .. scan_mode .. [[&scanner=]] .. scanner_id .. [[';
                 
             } catch (error) {
                 console.error('Scan error:', error);
-                document.getElementById('errorMessage').textContent = error.message;
-                showSection('error');
+                // Redirect to error page with error message
+                window.location.href = '/scan-error.html?error=' + encodeURIComponent(error.message);
             }
         }
 
@@ -154,8 +127,172 @@ local function create_scan_page(command_config)
     return html
 end
 
+-- Function to create success page
+local function create_success_page()
+    local html = [[
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Scan Complete</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            text-align: center;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+        .success-icon {
+            color: #2ecc71;
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .info {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-icon">✓</div>
+        <h2>Scan Complete!</h2>
+        <p>Your document has been scanned successfully.</p>
+        <div id="scan-info" class="info"></div>
+        <button onclick="window.close();">Close Window</button>
+    </div>
+    <script>
+        // Extract scan info from URL parameters
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const type = urlParams.get('type') || 'Document';
+            const mode = urlParams.get('mode') || 'Unknown';
+            const scanner = urlParams.get('scanner') || 'Unknown';
+            
+            document.getElementById('scan-info').innerHTML = 
+                `Type: ${type}<br>Mode: ${mode}<br>Scanner: ${scanner}`;
+        };
+    </script>
+</body>
+</html>
+    ]]
+    
+    return html
+end
+
+-- Function to create error page
+local function create_error_page()
+    local html = [[
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Scan Error</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            text-align: center;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+        .error-icon {
+            color: #e74c3c;
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .error-message {
+            margin-top: 20px;
+            color: #e74c3c;
+            padding: 10px;
+            border: 1px solid #e74c3c;
+            border-radius: 4px;
+            font-family: monospace;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="error-icon">✗</div>
+        <h2>Scan Error</h2>
+        <p>There was a problem with your scan request.</p>
+        <div id="error-message" class="error-message"></div>
+        <button onclick="window.close();">Close Window</button>
+    </div>
+    <script>
+        // Extract error message from URL parameters
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const error = urlParams.get('error') || 'Unknown error';
+            document.getElementById('error-message').textContent = error;
+        };
+    </script>
+</body>
+</html>
+    ]]
+    
+    return html
+end
+
 -- Main request handling
-if string.match(ngx.var.uri, "%.html$") then
+if ngx.var.uri == "/scan-success.html" then
+    -- Serve success page
+    ngx.header.content_type = "text/html"
+    ngx.say(create_success_page())
+    return ngx.exit(ngx.OK)
+elseif ngx.var.uri == "/scan-error.html" then
+    -- Serve error page
+    ngx.header.content_type = "text/html"
+    ngx.say(create_error_page())
+    return ngx.exit(ngx.OK)
+elseif string.match(ngx.var.uri, "%.html$") then
     add_debug("Processing request for: " .. ngx.var.uri)
     
     local config = read_config_file()
