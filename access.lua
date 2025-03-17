@@ -107,13 +107,33 @@ local function create_scan_page(command_config)
                 const data = await response.json();
                 console.log('Scan response:', data);
                 
-                // Redirect to success page with scan info
-                window.location.href = '/scan-success.html?type=]] .. scan_type .. [[&mode=]] .. scan_mode .. [[&scanner=]] .. scanner_id .. [[';
+                // Store file information in localStorage for the success page
+                if (data && data.file) {
+                    localStorage.setItem('scanResult', JSON.stringify({
+                        success: true,
+                        file: data.file,
+                        scanType: ']] .. scan_type .. [[',
+                        scanMode: ']] .. scan_mode .. [[',
+                        scannerId: ']] .. scanner_id .. [['
+                    }));
+                }
+                
+                // Redirect to success page
+                window.location.href = '/scan-success';
                 
             } catch (error) {
                 console.error('Scan error:', error);
-                // Redirect to error page with error message
-                window.location.href = '/scan-error.html?error=' + encodeURIComponent(error.message);
+                // Store error information in localStorage for the error page
+                localStorage.setItem('scanResult', JSON.stringify({
+                    success: false,
+                    error: error.message,
+                    scanType: ']] .. scan_type .. [[',
+                    scanMode: ']] .. scan_mode .. [[',
+                    scannerId: ']] .. scanner_id .. [['
+                }));
+                
+                // Redirect to error page
+                window.location.href = '/scan-error';
             }
         }
 
@@ -170,10 +190,14 @@ local function create_success_page()
         button:hover {
             background-color: #2980b9;
         }
-        .info {
-            margin-top: 20px;
+        .file-info {
+            margin-top: 10px;
             font-size: 14px;
             color: #777;
+            text-align: left;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
         }
     </style>
 </head>
@@ -182,19 +206,38 @@ local function create_success_page()
         <div class="success-icon">✓</div>
         <h2>Scan Complete!</h2>
         <p>Your document has been scanned successfully.</p>
-        <div id="scan-info" class="info"></div>
+        <div id="file-info" class="file-info">Loading scan information...</div>
         <button onclick="window.close();">Close Window</button>
     </div>
     <script>
-        // Extract scan info from URL parameters
         window.onload = function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const type = urlParams.get('type') || 'Document';
-            const mode = urlParams.get('mode') || 'Unknown';
-            const scanner = urlParams.get('scanner') || 'Unknown';
-            
-            document.getElementById('scan-info').innerHTML = 
-                `Type: ${type}<br>Mode: ${mode}<br>Scanner: ${scanner}`;
+            // Retrieve scan result from localStorage
+            const resultData = localStorage.getItem('scanResult');
+            if (resultData) {
+                try {
+                    const result = JSON.parse(resultData);
+                    if (result.file) {
+                        document.getElementById('file-info').innerHTML = `
+                            <strong>Document Type:</strong> ${result.scanType}<br>
+                            <strong>Mode:</strong> ${result.scanMode}<br>
+                            <strong>Scanner:</strong> ${result.scannerId}<br>
+                            <strong>File:</strong> ${result.file.name}<br>
+                            <strong>Size:</strong> ${result.file.sizeString}<br>
+                            <strong>Date:</strong> ${new Date(result.file.lastModified).toLocaleString()}<br>
+                            <strong>Path:</strong> ${result.file.path}/${result.file.name}
+                        `;
+                    } else {
+                        document.getElementById('file-info').textContent = 'Scan completed, but no file details available.';
+                    }
+                    
+                    // Clear the localStorage after retrieving data
+                    localStorage.removeItem('scanResult');
+                } catch (e) {
+                    document.getElementById('file-info').textContent = 'Error retrieving scan details.';
+                }
+            } else {
+                document.getElementById('file-info').textContent = 'No scan information available.';
+            }
         };
     </script>
 </body>
@@ -248,13 +291,18 @@ local function create_error_page()
             background-color: #2980b9;
         }
         .error-message {
-            margin-top: 20px;
+            margin-top: 10px;
             color: #e74c3c;
             padding: 10px;
             border: 1px solid #e74c3c;
             border-radius: 4px;
             font-family: monospace;
             text-align: left;
+        }
+        .scan-info {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #777;
         }
     </style>
 </head>
@@ -263,15 +311,33 @@ local function create_error_page()
         <div class="error-icon">✗</div>
         <h2>Scan Error</h2>
         <p>There was a problem with your scan request.</p>
-        <div id="error-message" class="error-message"></div>
+        <div id="error-message" class="error-message">Loading error details...</div>
+        <div id="scan-info" class="scan-info"></div>
         <button onclick="window.close();">Close Window</button>
     </div>
     <script>
-        // Extract error message from URL parameters
         window.onload = function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const error = urlParams.get('error') || 'Unknown error';
-            document.getElementById('error-message').textContent = error;
+            // Retrieve scan result from localStorage
+            const resultData = localStorage.getItem('scanResult');
+            if (resultData) {
+                try {
+                    const result = JSON.parse(resultData);
+                    document.getElementById('error-message').textContent = result.error || 'Unknown error';
+                    
+                    document.getElementById('scan-info').innerHTML = `
+                        <strong>Document Type:</strong> ${result.scanType}<br>
+                        <strong>Mode:</strong> ${result.scanMode}<br>
+                        <strong>Scanner:</strong> ${result.scannerId}
+                    `;
+                    
+                    // Clear the localStorage after retrieving data
+                    localStorage.removeItem('scanResult');
+                } catch (e) {
+                    document.getElementById('error-message').textContent = 'Error retrieving error details.';
+                }
+            } else {
+                document.getElementById('error-message').textContent = 'No error information available.';
+            }
         };
     </script>
 </body>
@@ -281,42 +347,30 @@ local function create_error_page()
     return html
 end
 
--- Determine the current execution phase
-local function handle_request()
-    -- Handle content phase requests for scan result pages
-    if ngx.get_phase() == "content" then
-        if ngx.var.uri == "/scan-success.html" then
-            -- Serve success page
-            ngx.header.content_type = "text/html"
-            ngx.say(create_success_page())
-            return ngx.exit(ngx.OK)
-        elseif ngx.var.uri == "/scan-error.html" then
-            -- Serve error page
-            ngx.header.content_type = "text/html"
-            ngx.say(create_error_page())
-            return ngx.exit(ngx.OK)
-        end
-    -- Handle access phase requests
-    elseif ngx.get_phase() == "access" then
-        if string.match(ngx.var.uri, "%.html$") then
-            add_debug("Processing request for: " .. ngx.var.uri)
-            
-            local config = read_config_file()
-            if config and config.commands[ngx.var.uri] then
-                local command_config = config.commands[ngx.var.uri]
-                add_debug("Found configuration for URI")
-                
-                -- Generate and serve the scan page
-                ngx.header.content_type = "text/html"
-                ngx.say(create_scan_page(command_config))
-                return ngx.exit(ngx.OK)
-            else
-                add_debug("No configuration found for this URI")
-            end
-        end
-    -- Other phases don't need special handling for our use case
+-- Main request handling
+if ngx.var.uri == "/scan-success" then
+    -- Serve success page
+    ngx.header.content_type = "text/html"
+    ngx.say(create_success_page())
+    return ngx.exit(ngx.OK)
+elseif ngx.var.uri == "/scan-error" then
+    -- Serve error page
+    ngx.header.content_type = "text/html"
+    ngx.say(create_error_page())
+    return ngx.exit(ngx.OK)
+elseif string.match(ngx.var.uri, "%.html$") then
+    add_debug("Processing request for: " .. ngx.var.uri)
+    
+    local config = read_config_file()
+    if config and config.commands[ngx.var.uri] then
+        local command_config = config.commands[ngx.var.uri]
+        add_debug("Found configuration for URI")
+        
+        -- Generate and serve the scan page
+        ngx.header.content_type = "text/html"
+        ngx.say(create_scan_page(command_config))
+        return ngx.exit(ngx.OK)
+    else
+        add_debug("No configuration found for this URI")
     end
 end
-
--- Execute the request handler
-handle_request()
