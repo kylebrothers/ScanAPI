@@ -44,6 +44,10 @@ local function create_scan_page(command_config)
     local device_id = command_config.data.params.deviceId
     local scanner_id = string.match(device_id, "_(%w+)$") or "Unknown"
     
+    -- Define Dropbox URLs with the correct folder path
+    local dropbox_web_url = "https://www.dropbox.com/home/scans"
+    local dropbox_app_url = "dbx://folder/scans" -- Deep link format
+    
     local html = [[
 <!DOCTYPE html>
 <html>
@@ -81,6 +85,10 @@ local function create_scan_page(command_config)
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        #countdown {
+            font-weight: bold;
+            color: #3498db;
+        }
     </style>
 </head>
 <body>
@@ -89,11 +97,53 @@ local function create_scan_page(command_config)
         <div class="spinner"></div>
         <p>Please wait while your ]] .. scan_type .. [[ is being scanned in ]] .. scan_mode .. [[ mode.</p>
         <p>Scanner: ]] .. scanner_id .. [[</p>
+        <p id="status-message">Connecting to scanner...</p>
+        <p>Redirecting to Dropbox in <span id="countdown">5</span> seconds...</p>
     </div>
     <script>
+        // Function to open Dropbox (trying app first, fallback to web)
+        function openDropbox() {
+            try {
+                // First try to open the Dropbox app
+                const appWindow = window.open(']] .. dropbox_app_url .. [[', '_blank');
+                
+                // Set a fallback in case the app isn't installed
+                setTimeout(() => {
+                    // If app window was blocked or didn't load, open web version
+                    window.location.href = ']] .. dropbox_web_url .. [[';
+                }, 1000);
+            } catch (error) {
+                // Direct fallback if any errors with the app URL
+                window.location.href = ']] .. dropbox_web_url .. [[';
+            }
+        }
+        
+        // Update the status message
+        function updateStatus(message) {
+            document.getElementById('status-message').textContent = message;
+        }
+        
+        // Countdown timer
+        function startCountdown(seconds, callback) {
+            const countdownElement = document.getElementById('countdown');
+            countdownElement.textContent = seconds;
+            
+            const interval = setInterval(() => {
+                seconds--;
+                countdownElement.textContent = seconds;
+                
+                if (seconds <= 0) {
+                    clearInterval(interval);
+                    callback();
+                }
+            }, 1000);
+        }
+        
         // Function to execute the scan
         async function executeScan() {
             try {
+                updateStatus("Sending scan request...");
+                
                 const response = await fetch(']] .. command_config.url .. [[', {
                     method: ']] .. (command_config.method or "GET") .. [[',
                     headers: ]] .. cjson.encode(command_config.headers or {}) .. [[,
@@ -101,39 +151,20 @@ local function create_scan_page(command_config)
                 });
                 
                 if (!response.ok) {
-                    throw new Error('Scan failed with status: ' + response.status);
+                    throw new Error('Scan request failed with status: ' + response.status);
                 }
                 
-                const data = await response.json();
-                console.log('Scan response:', data);
+                updateStatus("Scan started successfully! Redirecting to Dropbox...");
                 
-                // Store file information in localStorage for the success page
-                if (data && data.file) {
-                    localStorage.setItem('scanResult', JSON.stringify({
-                        success: true,
-                        file: data.file,
-                        scanType: ']] .. scan_type .. [[',
-                        scanMode: ']] .. scan_mode .. [[',
-                        scannerId: ']] .. scanner_id .. [['
-                    }));
-                }
-                
-                // Redirect to success page
-                window.location.href = '/scan-success';
+                // Start countdown then redirect
+                startCountdown(5, openDropbox);
                 
             } catch (error) {
                 console.error('Scan error:', error);
-                // Store error information in localStorage for the error page
-                localStorage.setItem('scanResult', JSON.stringify({
-                    success: false,
-                    error: error.message,
-                    scanType: ']] .. scan_type .. [[',
-                    scanMode: ']] .. scan_mode .. [[',
-                    scannerId: ']] .. scanner_id .. [['
-                }));
+                updateStatus("Error: " + error.message + ". Redirecting to Dropbox anyway...");
                 
-                // Redirect to error page
-                window.location.href = '/scan-error';
+                // Still redirect to Dropbox after a shorter delay
+                startCountdown(3, openDropbox);
             }
         }
 
@@ -147,7 +178,7 @@ local function create_scan_page(command_config)
     return html
 end
 
--- Function to create success page
+-- Function to create success page (we're keeping this for backward compatibility)
 local function create_success_page()
     local html = [[
 <!DOCTYPE html>
@@ -247,7 +278,7 @@ local function create_success_page()
     return html
 end
 
--- Function to create error page
+-- Function to create error page (we're keeping this for backward compatibility)
 local function create_error_page()
     local html = [[
 <!DOCTYPE html>
