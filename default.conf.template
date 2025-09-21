@@ -18,17 +18,18 @@ server {
         content_by_lua_file /usr/local/openresty/nginx/lua/access.lua;
     }
 
-    # Generic scanner proxy - matches /api/scanner-{identifier}/...
+    # Scanner BD proxy
     location ~ ^/api/scanner-bd/(.*)$ {
-        proxy_pass http://${SCANNER_HOST}:${SCANNER_BD_PORT}/api/v1/$1;
+        proxy_pass http://${SCANNER_BD_HOST}:${SCANNER_BD_PORT}/api/v1/$1;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
+    # Scanner 69 proxy
     location ~ ^/api/scanner-69/(.*)$ {
-        proxy_pass http://${SCANNER_HOST}:${SCANNER_69_PORT}/api/v1/$1;
+        proxy_pass http://${SCANNER_69_HOST}:${SCANNER_69_PORT}/api/v1/$1;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
