@@ -10,7 +10,7 @@ RUN mkdir -p /var/log/nginx \
 
 # Copy configurations
 COPY nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
-COPY default.conf /etc/nginx/conf.d/default.conf
+COPY default.conf.template /etc/nginx/conf.d/default.conf.template
 COPY access.lua /usr/local/openresty/nginx/lua/access.lua
 
 # Set proper permissions
