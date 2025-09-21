@@ -4,8 +4,13 @@ services:
   webserver:
     build: .
     container_name: nginx-curl-server
+    environment:
+      - SCANNER_BD_HOST=${SCANNER_BD_HOST:-192.168.0.166}
+      - SCANNER_BD_PORT=${SCANNER_BD_PORT:-8080}
+      - SCANNER_69_HOST=${SCANNER_69_HOST:-192.168.0.166}
+      - SCANNER_69_PORT=${SCANNER_69_PORT:-8081}
     ports:
-      - "${HOST_PORT:-80}:80"  # Dynamic host port with default value 80
+      - "${HOST_PORT:-80}:80"
     volumes:
       - nginx_html:/usr/share/nginx/html
       - nginx_config:/usr/local/openresty/nginx/conf/custom
