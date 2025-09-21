@@ -14,8 +14,8 @@ NC = \033[0m # No Color
 help:
 	@echo "Available commands:"
 	@echo "  ${GREEN}make build${NC}      - Build the Docker image"
-	@echo "  ${GREEN}make start${NC}      - Start the containers"
-	@echo "  ${GREEN}make stop${NC}       - Stop the containers"
+	@echo "  ${GREEN}make up${NC}      - Start the containers"
+	@echo "  ${GREEN}make down${NC}       - Stop the containers"
 	@echo "  ${GREEN}make restart${NC}    - Restart the containers"
 	@echo "  ${GREEN}make status${NC}     - Show container status"
 	@echo "  ${GREEN}make logs${NC}       - Show container logs"
@@ -29,14 +29,14 @@ build:
 	$(COMPOSE) build --no-cache
 
 # Start the containers
-start:
+up:
 	@echo "${GREEN}Starting containers...${NC}"
 	$(COMPOSE) up -d
 	@echo "${GREEN}Containers started successfully${NC}"
 	@make status
 
 # Stop the containers
-stop:
+down:
 	@echo "${RED}Stopping containers...${NC}"
 	$(COMPOSE) stop
 	@echo "${RED}Containers stopped${NC}"
