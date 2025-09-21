@@ -1,6 +1,7 @@
 FROM openresty/openresty:alpine
 
-RUN apk add --no-cache curl gettext
+# Install curl and gettext - ensure gettext-envsubst is available
+RUN apk add --no-cache curl gettext libintl
 
 # Create directories
 RUN mkdir -p /var/log/nginx \
